@@ -1,16 +1,20 @@
-{
-  inputs,
-  pkgs,
-  config,
+self: {
+  flake-parts-lib,
   lib,
-  self,
   ...
 }: let
-  inherit (lib) mkOption types;
+  inherit (lib) mkOption types mdDoc literalExpression;
 
-  inherit (pkgs) runCommand;
+  inherit (flake-parts-lib) mkPerSystemOption;
 
-  submodule = {...}: {
+  submodule = {
+    pkgs,
+    config,
+    system,
+    ...
+  }: let
+    inherit (pkgs) runCommand;
+  in {
     options = {
       run = mkOption {
         type = types.package;
@@ -18,16 +22,24 @@
           Do not use. Triggers the command
         '';
         readOnly = true;
-        default = run;
+        default = config.mkSettingsJson;
         defaultText = "<derivation>";
       };
 
-      rootSrc = mkOption {
+      outDir = mkOption {
         type = types.path;
         description = lib.mdDoc ''
           defaults to self.outPath
         '';
         default = self.outPath;
+      };
+
+      outName = mkOption {
+        type = types.string;
+        description = lib.mdDoc ''
+          defaults to settings.json
+        '';
+        default = "settings.json";
       };
 
       configJson = mkOption {
@@ -43,22 +55,25 @@
   };
 in {
   options = {
-    perSystem = mkPerSystemOption ({pkgs, ...}: {
+    perSystem = mkPerSystemOption ({
+      pkgs,
+      system,
+      ...
+    }: {
       options = {
-        type = types.attrsOf (types.submoduleWith {
-          modules = [submodule];
-          specialArgs = {inherit system pkgs;};
-        });
+        settingsJson = mkOption {
+          type = types.attrsOf (types.submoduleWith {
+            modules = [submodule];
+            specialArgs = {inherit system pkgs;};
+          });
 
-        default = {};
-        description = mdDoc "";
-        example = literalExpression ''
-          TODO doc
-        '';
+          default = {};
+          description = mdDoc "";
+          example = literalExpression ''
+            TODO doc
+          '';
+        };
       };
     });
-    # code-workspace = {
-    #   configJson = "hi";
-    # };
   };
 }
