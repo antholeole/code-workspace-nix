@@ -7,23 +7,19 @@ self: {
 
   inherit (flake-parts-lib) mkPerSystemOption;
 
-  submodule = {
+  codeWorkspaceSubmodule = {
     pkgs,
     config,
     system,
     ...
-  }: let
-    inherit (pkgs) runCommand;
-  in {
+  }: {
     options = {
-      run = mkOption {
+      package = mkOption {
         type = types.package;
         description = lib.mdDoc ''
           Do not use. Triggers the command
         '';
         readOnly = true;
-        default = config.mkSettingsJson;
-        defaultText = "<derivation>";
       };
 
       outDir = mkOption {
@@ -31,7 +27,7 @@ self: {
         description = lib.mdDoc ''
           defaults to self.outPath
         '';
-        default = self.outPath;
+        default = self;
       };
 
       outName = mkOption {
@@ -43,34 +39,41 @@ self: {
       };
 
       configJson = mkOption {
-        type = types.path;
+        type = types.string;
         description = lib.mdDoc ''
           the json
         '';
+      };
+    };
 
-        # TODO switch to json
-        default = self.string;
+    config = {
+      package = self.lib.${system}.mkSettingsJson {
+        inherit (config) outDir outName;
       };
     };
   };
 in {
   options = {
     perSystem = mkPerSystemOption ({
-      pkgs,
       system,
+      pkgs,
       ...
     }: {
       options = {
-        settingsJson = mkOption {
+        codeWorkspace = mkOption {
           type = types.attrsOf (types.submoduleWith {
-            modules = [submodule];
+            modules = [codeWorkspaceSubmodule];
             specialArgs = {inherit system pkgs;};
           });
 
           default = {};
-          description = mdDoc "";
+          description = mdDoc "Attribute set containing procfile declarations";
           example = literalExpression ''
-            TODO doc
+            {
+              daemons.processes = {
+                redis = lib.getExe' pkgs.redis "redis-server";
+              };
+            }
           '';
         };
       };

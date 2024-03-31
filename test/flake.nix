@@ -12,10 +12,7 @@
 
   outputs = inputs:
     inputs.parts.lib.mkFlake {inherit inputs;} {
-      systems = [
-        "x86_64-linux"
-        "aarch64-linux"
-      ];
+      systems = ["x86_64-linux" "aarch64-linux"];
 
       imports = [(inputs.call-flake ../.).flakeModule];
 
@@ -26,46 +23,22 @@
         lib,
         pkgs,
         ...
-      }: let
-        testScript = out: exe: json: ''
-          set -x
-
-          ${exe}
-
-
-        '';
-      
-        mkTestShell = outPath: exe: json:
-          pkgs.mkShellNoCC {
-            packages = [
-              (pkgs.writeShellApplication {
-                name = "run-ci";
-
-                text = ''
-                set -x
-
-                ${exe}
-
-                generated = echo -n ${outPath} | sha256sum
-
-                [ "$generated" == "${json}" ] && exit 0 || exit 1
-                '';
-              })
-            ];
-          };
-      in {
-        settingsJson = {
-            configJson = "hi!";
-            outName = "settings.json";
+      }: {
+        codeWorkspace.settings = {
+          outDir = ./.;
+          outName = "settings.json";
+          # configJson = "BLAH";
         };
 
+        # TODO: can run concurrently. defaults. etc
+        devShells.default = pkgs.mkShellNoCC {
+          packages = [
+            (pkgs.writeShellScriptBin "run-ci" ''
+              set -x
 
-        devShells = {
-            default = (
-                "${config.settingsJson.outDir}/${config.settingsJson.outName}" 
-                "${config.settingsJson.run}/bin/settingsJson" 
-                config.settingsJson.configJson
-            );
+              #exec ${lib.getExe config.codeWorkspace.settings.package}
+            '')
+          ];
         };
       };
     };
